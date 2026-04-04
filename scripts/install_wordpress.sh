@@ -17,7 +17,7 @@ systemctl start mariadb
 systemctl enable mariadb
 
 # Configure database
-mysql -u root <<EOF
+mysql -u root <<'EOF'
 CREATE DATABASE IF NOT EXISTS ${db_name};
 CREATE USER IF NOT EXISTS '${db_user}'@'localhost' IDENTIFIED BY '${db_password}';
 GRANT ALL PRIVILEGES ON ${db_name}.* TO '${db_user}'@'localhost';
