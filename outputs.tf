@@ -1,19 +1,19 @@
-output "instance_id" {
-    description = "EC2 instance ID"
-    value       = aws_instance.wordpress.id
+output "cloudfront_domain_name" {
+  description = "CloudFront URL to access WordPress"
+  value       = module.cloudfront.cloudfront_domain_name
 }
 
-output "public_ip" {
-  description = "Public IP of the Wordpress instance"
-  value       = aws_instance.wordpress.public_ip
+output "alb_dns_name" {
+  description = "ALB DNS name"
+  value       = module.alb.alb_dns_name
+}
+
+output "rds_endpoint" {
+  description = "RDS endpoint"
+  value       = module.rds.rds_endpoint
 }
 
 output "wordpress_url" {
-  description = "Wordpress site url"
-  value       = "http://${aws_instance.wordpress.public_ip}"
-}
-
-output "ssh_command" {
-  description = "SSH command to connect to the instance"
-  value       = "ssh -i ~/.ssh/${var.key_name}.pem ec2-user@${aws_instance.wordpress.public_ip}"
+  description = "WordPress site URL via CloudFront"
+  value       = "http://${module.cloudfront.cloudfront_domain_name}"
 }
