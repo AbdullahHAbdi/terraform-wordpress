@@ -1,6 +1,6 @@
-# WordPress on AWS — Terraform
+# WordPress on AWS using Terraform
 
-Terraform project that provisions a production-style WordPress stack on AWS, fully automated via modular Terraform and cloud-init user data. Infrastructure mirrors my [ClickOps WordPress deployment](https://github.com/AbdullahHAbdi/clickops-aws-wordpress) — rebuilt as code.
+Terraform project that provisions a production-style WordPress stack on AWS, fully automated via modular Terraform and cloud-init user data. Infrastructure mirrors my [ClickOps WordPress deployment](https://github.com/AbdullahHAbdi/clickops-aws-wordpress) - rebuilt as code.
 
 ---
 
@@ -127,4 +127,4 @@ terraform destroy
 
 ## Related Projects
 
-- [clickops-aws-wordpress](https://github.com/AbdullahHAbdi/clickops-aws-wordpress) — Same architecture deployed manually through the AWS Console, featuring VPC, public/private subnets, ALB, RDS, CloudFront, S3, and Cloudflare DNS
+- [clickops-aws-wordpress](https://github.com/AbdullahHAbdi/clickops-aws-wordpress) - Same architecture deployed manually through the AWS Console, featuring VPC, public/private subnets, ALB, RDS, CloudFront, S3, and Cloudflare DNS
