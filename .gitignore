@@ -3,3 +3,6 @@
 *.tfvars
 .terraform/
 .terraform.lock.hcl
+crash.log
+sessionmanager-bundle/
+sessionmanager-bundle.zip
