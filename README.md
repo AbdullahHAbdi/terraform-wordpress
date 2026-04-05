@@ -1,24 +1,46 @@
 # WordPress on AWS — Terraform
 
-Terraform project that provisions a WordPress installation on AWS EC2, fully automated via user data. Infrastructure is defined as code across modular `.tf` files following Terraform best practices.
+Terraform project that provisions a production-style WordPress stack on AWS, fully automated via modular Terraform and cloud-init user data. Infrastructure mirrors my [ClickOps WordPress deployment](https://github.com/AbdullahHAbdi/clickops-aws-wordpress) — rebuilt as code.
 
 ---
 
 ## Architecture
 
-Internet → Cloudflare DNS → EC2 Public IP
-└── Apache + PHP 8.5 + WordPress
-└── MariaDB 10.5 (local)
+```
+Internet → CloudFront CDN → ALB (public subnets)
+└── EC2 WordPress (private subnet)
+└── RDS MySQL (private subnet)
+└── S3 (media storage)
 
-| Resource       | Details                         |
-|----------------|---------------------------------|
-| EC2            | t2.micro, Amazon Linux 2023     |
-| Web Server     | Apache httpd                    |
-| PHP            | PHP 8.5 + php-fpm, php-mysqlnd  |
-| Database       | MariaDB 10.5 (local)            |
-| DNS            | Cloudflare                      |
-| Security Group | HTTP, HTTPS open — SSH restricted |
+```
+| Resource        | Details                                        |
+|-----------------|------------------------------------------------|
+| VPC             | Custom VPC, 2 public + 2 private subnets, 2 AZs|
+| EC2             | t3.micro, Amazon Linux 2023, private subnet    |
+| Web Server      | Apache + PHP 8.5 + php-fpm                     |
+| Database        | RDS MySQL 8.4, private subnet                  |
+| Load Balancer   | Application Load Balancer, public subnets      |
+| CDN             | CloudFront with ALB + S3 origins               |
+| Storage         | S3 bucket for media                            |
+| IAM             | EC2 instance role with S3 + SSM access         |
+| DNS             | Cloudflare (external)                          |
 
+---
+
+## Module Structure
+
+```
+modules/
+├── vpc/              # VPC, subnets, IGW, NAT Gateway, route tables
+├── security_groups/  # ALB, EC2, and RDS security groups
+├── iam/              # EC2 instance role and instance profile
+├── rds/              # RDS MySQL instance and subnet group
+├── alb/              # Application Load Balancer, target group, listener
+├── s3/               # Media storage bucket with versioning
+├── ec2/              # EC2 instance, user data, ALB registration
+└── cloudfront/       # CloudFront distribution with ALB + S3 origins
+
+```
 ---
 
 ## Prerequisites
@@ -26,7 +48,6 @@ Internet → Cloudflare DNS → EC2 Public IP
 - [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.3
 - AWS CLI configured (`aws configure`)
 - An existing EC2 key pair in your target region
-- A Cloudflare-managed domain (optional)
 
 ---
 
@@ -46,7 +67,7 @@ terraform plan
 terraform apply
 ```
 
-After apply completes, wait 3–5 minutes for cloud-init to finish, then:
+After apply completes (~15 minutes for RDS and CloudFront):
 ```bash
 terraform output wordpress_url
 ```
@@ -57,16 +78,16 @@ Open that URL in your browser to complete the WordPress setup wizard.
 
 ## Variables
 
-| Variable        | Description                        | Default                  |
-|-----------------|------------------------------------|--------------------------|
-| `aws_region`    | AWS region                         | `us-east-2`              |
-| `project_name`  | Prefix for all resource names      | `wordpress-tf`           |
-| `instance_type` | EC2 instance type                  | `t2.micro`               |
-| `ami_id`        | Amazon Linux 2023 AMI ID           | AL2023 us-east-2         |
-| `key_name`      | Existing EC2 key pair name         | **required**             |
-| `db_name`       | WordPress database name            | `wordpress`              |
-| `db_user`       | WordPress database user            | `wpuser`                 |
-| `db_password`   | WordPress database password        | **required, sensitive**  |
+| Variable          | Description                        | Default          |
+|-------------------|------------------------------------|------------------|
+| `aws_region`      | AWS region                         | `us-east-2`      |
+| `project_name`    | Prefix for all resource names      | `wordpress-tf`   |
+| `instance_type`   | EC2 instance type                  | `t3.micro`       |
+| `ami_id`          | Amazon Linux 2023 AMI ID           | AL2023 us-east-2 |
+| `key_name`        | Existing EC2 key pair name         | **required**     |
+| `db_name`         | WordPress database name            | `wordpress`      |
+| `db_username`     | RDS master username                | `wpuser`         |
+| `db_password`     | RDS master password                | **required, sensitive** |
 
 > `terraform.tfvars` is gitignored. See `terraform.tfvars.example` for the template.
 
@@ -74,17 +95,17 @@ Open that URL in your browser to complete the WordPress setup wizard.
 
 ## User Data
 
-WordPress installation is handled by [`scripts/install_wordpress.sh`](scripts/install_wordpress.sh), injected into the EC2 instance via Terraform's `templatefile()` function. The script:
+WordPress installation is handled by [`scripts/install_wordpress.sh`](scripts/install_wordpress.sh), injected into EC2 via Terraform's `templatefile()` function. The script:
 
 - Updates system packages
-- Installs Apache, PHP 8.5, and MariaDB 10.5
-- Creates the WordPress database and user
+- Installs Apache, PHP 8.5, and php-fpm
 - Downloads and configures WordPress
+- Connects WordPress to RDS using injected credentials
 - Sets correct file ownership and permissions
 
-To monitor the install after launch:
+Monitor install progress after launch:
 ```bash
-ssh -i ~/.ssh/<key>.pem ec2-user@<public_ip>
+# Via SSM Session Manager (AWS Console → Systems Manager → Session Manager)
 sudo tail -f /var/log/wordpress-install.log
 ```
 
@@ -97,12 +118,13 @@ terraform destroy
 
 ---
 
-## Screenshot
+## Screenshots
 
-![WordPress Deployment](terraform-wordpress.png)
+![WordPress Site](screenshots/wordpress-site.png)
+![WordPress Admin](screenshots/wordpress-admin.png)
 
 ---
 
 ## Related Projects
 
-- [clickops-aws-wordpress](https://github.com/AbdullahHAbdi/clickops-aws-wordpress) — Same stack deployed manually through the AWS Console, featuring VPC, public/private subnets, ALB, CloudFront, and Cloudflare DNS
+- [clickops-aws-wordpress](https://github.com/AbdullahHAbdi/clickops-aws-wordpress) — Same architecture deployed manually through the AWS Console, featuring VPC, public/private subnets, ALB, RDS, CloudFront, S3, and Cloudflare DNS
